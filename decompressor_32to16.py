@@ -47,18 +47,17 @@ def decompress(input_file="compressed.bin", keyfile="key.txt", metafile="output.
         i = 0
         while i < len(data):
             # Read 2 bytes
-            if i + 2 > len(data):
-                break
             val = int.from_bytes(data[i:i+2], "big")
-            # If this is a Greek code (in mapping)
-            if val in greek_map:
-                fout.write(greek_map[val])
+            if val & 0x8000:  # High bit set means Greek code
+                code = val & 0x7FFF  # Remove high bit to get Greek code index
+                if code not in greek_map:
+                    raise ValueError(f"Unknown Greek code: {hex(val)} (tried {hex(code)})")
+                fout.write(greek_map[code])
                 i += 2
             else:
-                # Otherwise, it's a literal 4-byte chunk: hi(2 bytes) + lo(2 bytes)
                 if i + 4 > len(data):
                     break
-                hi = int.from_bytes(data[i:i+2], "big")
+                hi = val
                 lo = int.from_bytes(data[i+2:i+4], "big")
                 full_val = (hi << 16) | lo
                 fout.write(full_val.to_bytes(4, "big"))
